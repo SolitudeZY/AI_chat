@@ -5,8 +5,8 @@ echo ===================================================
 
 echo.
 echo [1/2] Launching Backend Server...
-start "Backend Server (FastAPI)" cmd /k "cd backend && python -m uvicorn app.main:app --reload --port 8000"
-
+start "Backend Server (FastAPI)" cmd /k "call conda activate Model_Agent && cd backend && python -m uvicorn app.main:app --reload --port 8000"
+timeout /t 3
 echo.
 echo [2/2] Launching Frontend Server...
 start "Frontend Server (Vite)" cmd /k "cd frontend && npm run dev"
