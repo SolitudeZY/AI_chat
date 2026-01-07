@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Star Trails Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #0a0a23 0%, #000000 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .container {
+            height: 100vh;
+            position: relative;
+        }
+        
+        #trails {
+            width: 100%;
+            height: 100%;
+            display: block;
+            filter: blur(0.3px) brightness(1.1);
+        }
+
+        /* 添加一个微妙的光晕效果 */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(100, 149, 237, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 添加闪烁的背景星星 */
+        .background-stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* 控制面板样式 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-item {
+            margin-bottom: 10px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .control-item input[type="range"] {
+            width: 100px;
+            accent-color: #4a9eff;
+        }
+
+        .control-item button {
+            background: linear-gradient(45deg, #4a9eff, #7b68ee);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+        }
+
+        .control-item button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(74, 158, 255, 0.3);
+        }
+
+        /* 标题样式 */
+        .title {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(45deg, #4a9eff, #7b68ee, #ff6b9d);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* 圆心指示器 - 默认透明，只在调整时显示 */
+        .center-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            opacity: 0; /* 默认透明 */
+        }
+
+        .center-indicator.visible {
+            opacity: 1; /* 调整时显示 */
+        }
+
+        .center-indicator::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .control-item span {
+            color: #4a9eff;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">✨ Cosmic Star Trails</div>
+    
+    <div class="background-stars" id="backgroundStars"></div>
+    
+    <div class="container">
+        <canvas id="trails"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="control-item">
+            <label>旋转速度</label>
+            <input type="range" label="" id="rotationSpeed" min="0.01" max="0.1" step="0.01" value="0.025">
+        </div>
+        <div class="control-item">
+            <label>轨迹淡化</label>
+            <input type="range" id="fadeSpeed" min="0.01" max="0.1" step="0.01" value="0.04">
+        </div>
+        <div class="control-item">
+            <button onclick="toggleAnimation()">暂停/播放</button>
+        </div>
+        <div class="control-item">
+            <button onclick="changeColorTheme()">切换主题</button>
+        </div>
+        <div class="control-item">
+            <label>圆心 X 位置</label>
+            <input type="range" id="centerX" min="0" max="100" step="1" value="50">
+            <span id="centerXValue">50%</span>
+        </div>
+        <div class="control-item">
+            <label>圆心 Y 位置</label>
+            <input type="range" id="centerY" min="0" max="100" step="1" value="50">
+            <span id="centerYValue">50%</span>
+        </div>
+        <div class="control-item">
+            <button onclick="resetCenter()">重置圆心</button>
+        </div>
+        <div class="control-item">
+            <button onclick="saveSettings()">保存设置</button>
+        </div>
+        <div class="control-item">
+            <button onclick="loadSettings()">加载设置</button>
+        </div>
+    </div>
+
+    <script>
+        let animationPaused = false;
+        let currentTheme = 0;
+        let rotationSpeed = 0.025;
+        let fadeSpeed = 0.04;
+        let centerX = 50; // 圆心X位置百分比
+        let centerY = 50; // 圆心Y位置百分比
+        let centerIndicator; // 圆心指示器元素
+        let showContext, helpContext; // 声明为全局变量
+        let showWidth, showHeight; // 声明为全局变量
+        let hideIndicatorTimeout; // 隐藏指��器的定时器
+
+        // 设置键名
+        const SETTINGS_KEY = 'starTrailsSettings';
+
+        // 加载保存的设置
+        function loadSavedSettings() {
+            const saved = localStorage.getItem(SETTINGS_KEY);
+            if (saved) {
+                try {
+                    const settings = JSON.parse(saved);
+                    centerX = settings.centerX || 50;
+                    centerY = settings.centerY || 50;
+                    rotationSpeed = settings.rotationSpeed || 0.025;
+                    fadeSpeed = settings.fadeSpeed || 0.04;
+                    currentTheme = settings.currentTheme || 0;
+                    
+                    // 更新控制面板
+                    document.getElementById('centerX').value = centerX;
+                    document.getElementById('centerY').value = centerY;
+                    document.getElementById('rotationSpeed').value = rotationSpeed;
+                    document.getElementById('fadeSpeed').value = fadeSpeed;
+                    
+                    updateCenterDisplay();
+                } catch (e) {
+                    console.log('加载设置失败:', e);
+                }
+            }
+        }
+
+        // 保存设置
+        function saveSettings() {
+            const settings = {
+                centerX,
+                centerY,
+                rotationSpeed,
+                fadeSpeed,
+                currentTheme
+            };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            
+            // 显示保存成功提示
+            showNotification('设置已保存！');
+        }
+
+        // 加载设置
+        function loadSettings() {
+            loadSavedSettings();
+            showNotification('设置已加载！');
+        }
+
+        // 重置圆心
+        function resetCenter() {
+            centerX = 50;
+            centerY = 50;
+            document.getElementById('centerX').value = centerX;
+            document.getElementById('centerY').value = centerY;
+            updateCenterDisplay();
+            updateCanvasTransform();
+            showCenterIndicator(); // 重置时显示指示器
+        }
+
+        // 显示圆心指示器
+        function showCenterIndicator() {
+            if (centerIndicator) {
+                centerIndicator.classList.add('visible');
+                
+                // 清除之前的定时器
+                if (hideIndicatorTimeout) {
+                    clearTimeout(hideIndicatorTimeout);
+                }
+                
+                // 2秒后隐藏指示器
+                hideIndicatorTimeout = setTimeout(() => {
+                    centerIndicator.classList.remove('visible');
+                }, 2000);
+            }
+        }
+
+        // 更新圆心显示
+        function updateCenterDisplay() {
+            document.getElementById('centerXValue').textContent = centerX + '%';
+            document.getElementById('centerYValue').textContent = centerY + '%';
+            
+            if (centerIndicator) {
+                centerIndicator.style.left = centerX + '%';
+                centerIndicator.style.top = centerY + '%';
+            }
+        }
+
+        // 更新canvas变换
+        function updateCanvasTransform() {
+            if (showContext && showWidth && showHeight) {
+                const actualX = (centerX / 100) * showWidth;
+                const actualY = (centerY / 100) * showHeight;
+                
+                showContext.setTransform(1, 0, 0, 1, 0, 0);
+                showContext.translate(actualX, actualY);
+            }
+        }
+
+        // 创建圆心指示器
+        function createCenterIndicator() {
+            centerIndicator = document.createElement('div');
+            centerIndicator.className = 'center-indicator';
+            document.querySelector('.container').appendChild(centerIndicator);
+            updateCenterDisplay();
+        }
+
+        // 显示通知
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(74, 158, 255, 0.9);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-size: 14px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+        }
+
+        // 创建背景闪烁星星
+        function createBackgroundStars() {
+            const container = document.getElementById('backgroundStars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'bg-star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = star.style.height = (Math.random() * 2 + 1) + 'px';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                container.appendChild(star);
+            }
+        }
+
+        // 等待DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            createBackgroundStars();
+
+            // 创建圆心指示器
+            createCenterIndicator();
+
+            // 加载保存的设置
+            loadSavedSettings();
+
+            // 创建两个 canvas 元素，show 用于显示，help 作为辅助
+            const help = document.createElement('canvas');
+            const show = document.getElementById('trails');
+
+            // 让两个 canvas 的宽高与显示区域的宽高一致
+            show.width = help.width = showWidth = show.offsetWidth;
+            show.height = help.height = showHeight = show.offsetHeight;
+
+            const longSide = Math.max(showWidth, showHeight);
+            // 使用长边构造成一个大点的正方形
+            help.width = longSide * 2.6;
+            help.height = longSide * 2.6;
+
+            // 获取上下文
+            showContext = show.getContext('2d');
+            helpContext = help.getContext('2d');
+
+            // 设置显示区域背景色
+            showContext.fillStyle = 'rgba(0,0,0,1)';
+            showContext.fillRect(0, 0, showWidth, showHeight);
+
+            // 创建随机颜色随机位置的星星
+            function rand(Min, Max) {
+                return Min + Math.round(Math.random() * (Max - Min));
+            }
+
+            // 颜色主题
+            const colorThemes = [
+                // 经典彩虹主题
+                () => {
+                    const r = rand(120, 255);
+                    const g = rand(120, 255);
+                    const b = rand(120, 255);
+                    const a = rand(30, 100) / 100;
+                    return `rgba(${r},${g},${b},${a})`;
+                },
+                // 蓝紫主题
+                () => {
+                    const r = rand(100, 180);
+                    const g = rand(120, 200);
+                    const b = rand(200, 255);
+                    const a = rand(40, 90) / 100;
+                    return `rgba(${r},${g},${b},${a})`;
+                },
+                // 暖色主题
+                () => {
+                    const r = rand(200, 255);
+                    const g = rand(100, 200);
+                    const b = rand(50, 150);
+                    const a = rand(40, 90) / 100;
+                    return `rgba(${r},${g},${b},${a})`;
+                },
+                // 冷色主题
+                () => {
+                    const r = rand(50, 150);
+                    const g = rand(150, 255);
+                    const b = rand(200, 255);
+                    const a = rand(40, 90) / 100;
+                    return `rgba(${r},${g},${b},${a})`;
+                }
+            ];
+
+            // 随机颜色（指定范围）
+            function randomColor() {
+                return colorThemes[currentTheme]();
+            }
+
+            // 星星数组
+            const stars = [];
+
+            // 创建每个星星的属性
+            function createStar() {
+                const size = Math.random() * 1 + 0.3; // 随机大小，更小的星星
+                return {
+                    x: rand(-help.width, help.width),
+                    y: rand(-help.height, help.height),
+                    size: size,
+                    color: randomColor(),
+                    brightness: Math.random() * 0.5 + 0.5, // 亮度变化
+                };
+            }
+
+            // 绘制星星实例（增强版）
+            function drawStar() {
+                let count = stars.length;
+                while (count--) {
+                    const star = stars[count];
+                    
+                    // 创建径向渐变效果
+                    const gradient = helpContext.createRadialGradient(
+                        star.x, star.y, 0,
+                        star.x, star.y, star.size * 3
+                    );
+                    gradient.addColorStop(0, star.color);
+                    gradient.addColorStop(0.5, star.color.replace(/[\d\.]+\)$/g, (star.brightness * 0.3) + ')'));
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+                    // 绘制光晕
+                    helpContext.beginPath();
+                    helpContext.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2, true);
+                    helpContext.fillStyle = gradient;
+                    helpContext.fill();
+
+                    // 绘制星星核心
+                    helpContext.beginPath();
+                    helpContext.arc(star.x, star.y, star.size, 0, Math.PI * 2, true);
+                    helpContext.fillStyle = star.color;
+                    helpContext.shadowBlur = star.size * 1.5;
+                    helpContext.shadowColor = star.color;
+                    helpContext.fill();
+                    helpContext.shadowBlur = 0;
+                }
+            }
+
+            // 计时
+            let drawTimes = 0;
+            
+            // 循环
+            function loop() {
+                if (animationPaused) return;
+
+                // 开始绘制
+                showContext.drawImage(help, -help.width / 2, -help.height / 2);
+
+                drawTimes++;
+
+                if (drawTimes > 200 && drawTimes % 8 === 0) {
+                    showContext.fillStyle = `rgba(0,0,0,${fadeSpeed})`;
+                    showContext.fillRect(-(longSide * 3), -(longSide * 3), longSide * 6, longSide * 6);
+                }
+                // 旋转
+                showContext.rotate(rotationSpeed * Math.PI / 180);
+            }
+
+            let count = 20000; // 增加星星数量
+
+            while (count--) {
+                stars.push(createStar());
+            }
+
+            drawStar();
+
+            // 设置初始变换
+            updateCanvasTransform();
+
+            function animate() {
+                window.requestAnimationFrame(animate);
+                loop();
+            }
+
+            animate();
+
+            // 控制面板事件监听
+            document.getElementById('rotationSpeed').addEventListener('input', function(e) {
+                rotationSpeed = parseFloat(e.target.value);
+            });
+
+            document.getElementById('fadeSpeed').addEventListener('input', function(e) {
+                fadeSpeed = parseFloat(e.target.value);
+            });
+
+            // 圆心控制事件监听
+            document.getElementById('centerX').addEventListener('input', function(e) {
+                centerX = parseFloat(e.target.value);
+                updateCenterDisplay();
+                updateCanvasTransform();
+                showCenterIndicator(); // 调整时显示指示器
+            });
+
+            document.getElementById('centerY').addEventListener('input', function(e) {
+                centerY = parseFloat(e.target.value);
+                updateCenterDisplay();
+                updateCanvasTransform();
+                showCenterIndicator(); // 调整时显示指示器
+            });
+
+            // 全局函数
+            window.toggleAnimation = function() {
+                animationPaused = !animationPaused;
+            };
+
+            window.changeColorTheme = function() {
+                currentTheme = (currentTheme + 1) % colorThemes.length;
+                // 重新生成星星颜色
+                stars.forEach(star => {
+                    star.color = randomColor();
+                });
+                // 重新绘制
+                helpContext.clearRect(0, 0, help.width, help.height);
+                drawStar();
+            };
+
+            // 监听浏览器窗口变化
+            window.addEventListener('resize', () => {
+                showWidth = show.offsetWidth;
+                showHeight = show.offsetHeight;
+                show.width = showWidth;
+                show.height = showHeight;
+                showContext.fillStyle = 'rgba(0,0,0,1)';
+                showContext.fillRect(0, 0, showWidth, showHeight);
+                
+                // 重新设置变换中心
+                updateCanvasTransform();
+            });
+        });
+    </script>
+</body>
+</html>
